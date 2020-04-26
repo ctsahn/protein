@@ -1,0 +1,130 @@
+#!/usr/bin/env python
+import urllib.request
+from urllib.error import HTTPError
+import xmltodict
+import argparse
+
+
+def fasta(id):
+    try:
+        url = urllib.request.urlopen("https://www.uniprot.org/uniprot/" + id + ".fasta")
+    except HTTPError:
+        print("Could not find protein: " + id)
+        exit()
+    data = url.read()
+    multi = data.decode("utf-8").strip()
+    
+    lst = multi.split("\n")
+    
+    combine = ""
+    
+    for i in lst:
+        if i != lst[0]:
+            combine = combine + i 
+    
+    oneline = lst[0] + "\n" + combine
+    return multi, oneline
+
+
+def xml(id):
+    try:
+        url = urllib.request.urlopen("https://www.uniprot.org/uniprot/" + id + ".xml")
+    except HTTPError:
+        print("Could not find protein: " + id)
+        exit()
+    data = url.read()
+    data = data.decode("utf-8")
+    mydict = xmltodict.parse(data)
+    name = mydict["uniprot"]["entry"]["protein"]
+    if "recommendedName" in name:
+        name = name["recommendedName"]["fullName"]
+    else:
+        name = name["submittedName"]["fullName"]
+    
+    
+    if not isinstance(name, str):
+    
+        name = name["#text"]
+
+    origin = mydict["uniprot"]["entry"]
+
+    if "organism" in origin:
+        origin = origin["organism"]["name"]
+        if isinstance(origin, list):
+            origin = origin[0]["#text"]
+        else:
+            origin = origin["#text"]
+    else:
+        origin = "N/A"
+
+    gene = mydict["uniprot"]["entry"]
+
+    if "gene" in gene:
+        gene = gene["gene"]["name"]
+        if isinstance(gene, list):
+            gene = gene[0]["#text"]
+        else:
+            gene = gene["#text"]
+    else:
+        gene = "N/A"
+    
+    sequence = mydict["uniprot"]["entry"]["sequence"]["#text"]
+
+    return name, origin, gene, sequence
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Quick command line UniProt protein search.")
+
+    parser.add_argument("protein", metavar="p", type=str, nargs="*", help="Uniprot ID for protein")
+    parser.add_argument("-s", "--sequence", help="Output only the amino acid sequence", action="store_true")
+    parser.add_argument("-n", "--name", help="Output only the protein name", action="store_true")
+    parser.add_argument("-g", "--gene", help="Output only the gene that codes for the protein", action="store_true")
+    parser.add_argument("-o", "--organism", help="Output only the organism that is the source of the protein", action="store_true")
+    parser.add_argument("-f", "--fasta", help="Output the FASTA of the protein", action="store_true")
+    parser.add_argument("-l", "--oneline", help="Output a one-line FASTA of the protein (header + one-line sequence)", action="store_true")
+
+    args = parser.parse_args()
+    id = args.protein
+    
+    for i in id:
+        
+        output = xml(i)
+        
+        check = True
+        
+        if args.fasta:
+            print(fasta(i)[0])
+            check = False
+        if args.oneline:
+            print(fasta(i)[1])
+            check = False
+        if args.name:
+            print(output[0])
+            check = False
+        if args.organism:
+            print(output[1])
+            check = False
+        if args.gene:
+            print(output[2])
+            check = False
+        if args.sequence:
+            print(output[3])
+            check = False
+        if check:
+            print("\n")
+            print("***Protein " + i + "***")
+            print("\n")
+            print("Name: " + output[0])
+            print("\n")
+            print("Organism: " + output[1])
+            print("\n")
+            print("Gene: " + output[2])
+            print("\n")
+            print("Amino acid sequence: " + output[3])
+            print("\n")
+    
+    
+if __name__ == "__main__":
+    main()
+
