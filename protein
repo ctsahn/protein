@@ -1,18 +1,17 @@
 #!/usr/bin/env python
-import urllib.request
-from urllib.error import HTTPError
+
 import xmltodict
 import argparse
-
+import requests
+import warnings
 
 def fasta(id):
-    try:
-        url = urllib.request.urlopen("https://www.uniprot.org/uniprot/" + id + ".fasta")
-    except HTTPError:
-        print("Could not find protein: " + id)
-        exit()
-    data = url.read()
-    multi = data.decode("utf-8").strip()
+    
+    url = "https://www.uniprot.org/uniprot/" + id + ".fasta"
+    multi = requests.get(url, verify=False).content
+    
+    multi = multi.decode("utf-8").strip()
+    
     
     lst = multi.split("\n")
     
@@ -27,12 +26,18 @@ def fasta(id):
 
 
 def xml(id):
-    try:
-        url = urllib.request.urlopen("https://www.uniprot.org/uniprot/" + id + ".xml")
-    except HTTPError:
+    warnings.filterwarnings("ignore")
+    url = "https://www.uniprot.org/uniprot/" + id + ".xml"
+    
+    r = requests.get(url,verify = False)
+    
+    
+    if r.status_code == 404:
         print("Could not find protein: " + id)
         exit()
-    data = url.read()
+        
+    data = r.content
+    
     data = data.decode("utf-8")
     mydict = xmltodict.parse(data)
     name = mydict["uniprot"]["entry"]["protein"]
